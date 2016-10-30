@@ -18,31 +18,40 @@
         this.league = league;
 
         this.totalAllVisits = 0;
+        this.visitsPerGame = 0;
 
         this.totalChangesOnly = 0;
+        this.changesPerGame = 0;
 
         this.totalPureVisits = 0;
+        this.pureVisitsPerGame = 0;
       }
     }
 
     let getTeams = initTeams();
-    // let getTotals = calcSeasonTotals(teamsArray);
-
 
     Promise.all([
       getTeams
     ])
     .then(results => {
+      console.log(results[0]);
       return calcSeasonTotals(results[0]);
     })
     .then(seasonTotals => {
-      vm.finalResults = seasonTotals;
+      console.log(seasonTotals);
+      return calcAverages(seasonTotals);
+    })
+    .then(finalResults => {
+      console.log(finalResults);
+      vm.finalResults = finalResults;
     });
 
     //helper functions
 
     function calcSeasonTotals(inputArray) {
       return new Promise((resolve, reject) => {
+
+        let gameCounter = 0;
 
         for (var i = moment("20160403", "YYYYMMDD"); i < moment("20161003", "YYYYMMDD"); i.add(1, 'days')) {
 
@@ -135,33 +144,36 @@
               }
 
             });
+
           }
+
         resolve(inputArray);
       });
 
     }
 
     function calcAverages(inputArray) {
-      return new Promise((resolve, reject) => {
-        inputArray.forEach(team => {
-          if (team.name === 'Major League Baseball') {
-            team.avgAllVisitsPerGame = parseInt(team.totalAllVisits) / 4860;
-            team.avgChangesPerGame = parseInt(team.totalChangesOnly) / 4860;
-            team.avgPureVisitsPerGame = parseInt(team.totalPureVisits) / 4860;
-          } else if (team.name === 'National League' || team.name === 'American League') {
-            team.avgAllVisitsPerGame = parseInt(team.totalAllVisits) / 2430;
-            team.avgChangesPerGame = parseInt(team.totalChangesOnly) / 2430;
-            team.avgPureVisitsPerGame = parseInt(team.totalPureVisits) / 2430;
 
-          } else {
-            team.avgAllVisitsPerGame = parseInt(team.totalAllVisits) / 162;
-            team.avgChangesPerGame = parseInt(team.totalChangesOnly) / 162;
-            team.avgPureVisitsPerGame = parseInt(team.totalPureVisits) / 162;
+      inputArray.forEach(team => {
+        if (team.name === 'Major League Baseball') {
+          team.visitsPerGame = parseInt(team.totalAllVisits) / 4860;
+          team.changesPerGame = parseInt(team.totalChangesOnly) / 4860;
+          team.pureVisitsPerGame = parseInt(team.totalPureVisits) / 4860;
+        } else if (team.name === 'National League' || team.name === 'American League') {
+          team.visitsPerGame = parseInt(team.totalAllVisits) / 2430;
+          team.changesPerGame = parseInt(team.totalChangesOnly) / 2430;
+          team.pureVisitsPerGame = parseInt(team.totalPureVisits) / 2430;
 
-          }
-        });
-        resolve(inputArray);
+        } else {
+          team.visitsPerGame = parseInt(team.totalAllVisits) / 162;
+          team.changesPerGame = parseInt(team.totalChangesOnly) / 162;
+          team.pureVisitsPerGame = parseInt(team.totalPureVisits) / 162;
+
+        }
       });
+
+      return inputArray;
+
     }
 
     function initTeams() {
