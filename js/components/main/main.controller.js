@@ -30,149 +30,223 @@
 
     let getTeams = initTeams();
 
-    Promise.all([
-      getTeams
-    ])
-    .then(results => {
-      console.log(results[0]);
-      return calcSeasonTotals(results[0]);
-    })
-    .then(seasonTotals => {
-      console.log(seasonTotals);
-      return calcAverages(seasonTotals);
-    })
-    .then(finalResults => {
-      console.log(finalResults);
-      vm.finalResults = finalResults;
-    });
+    // Promise.all([
+    //   getTeams
+    // ])
+    // .then(results => {
+    //   console.log(results[0]);
+    //   return calcSeasonTotals(results[0]);
+    // })
+    // .then(seasonTotals => {
+    //   console.log(seasonTotals);
+    //   return calcAverages(seasonTotals);
+    // })
+    // .then(finalResults => {
+    //   console.log(finalResults);
+    //   vm.finalResults = finalResults;
+    // });
+
+    // getTodaysGames('04', '03')
+    //   .then(results => {
+    //     let promises = results.map(game => {
+    //       return getMatchUpDetails(game);
+    //     });
+    //
+    //     return Promise.all(promises);
+    //   }).then(result => console.log(result));
+
+      console.log(MainService.getGamesForDay('04', '03')
+      .then(results => {
+
+        return results.data.data.games.game.filter(game => {
+          return game.game_type === 'R' && game.status === 'Final';
+        })
+        .map(game => {
+          return {
+            dataUrl: game.game_data_directory,
+            homeTeam: game.home_team_name,
+            awayTeam: game.away_team_name
+          };
+        });
+      }));
+
 
     //helper functions
 
-    function calcSeasonTotals(inputArray) {
-      return new Promise((resolve, reject) => {
+    function getDateRange(start, end) {
+      let format = 'YYYYMMDD';
+      let startDate = moment(start, format);
+      let endDate = moment(end, format);
+      let results = [];
 
-        let gameCounter = 0;
+      for (var i = startDate; i < endDate; i.add(1, 'days')) {
+        let date = i.format().split('-');
+        let dayTime = date[2].split('T');
 
-        for (var i = moment("20160403", "YYYYMMDD"); i < moment("20161003", "YYYYMMDD"); i.add(1, 'days')) {
+        let month = date[1];
+        let day = dayTime[0];
 
-          let date = i.format().split('-');
-          let dayTime = date[2].split('T');
+        results.push({day, month});
+      }
+      return results;
+    }
 
-          let month = date[1];
-
-          let day = dayTime[0];
-
-          MainService.getGamesForDay(month, day)
-            .then(results => {
-              let gamesArray = results.data.data.games.game;
-
-              if (gamesArray) {
-
-                gamesArray.forEach((game, index) => {
-
-                  if (game.game_type !== 'R' || game.status !== 'Final') {
-                    gamesArray.splice(index, 1);
-                  }
-
-                  let gameDataUrl = gamesArray[index].game_data_directory;
-
-                  let gameHomeTeam = gamesArray[index].home_team_name;
-
-                  let gameAwayTeam = gamesArray[index].away_team_name;
-
-                  MainService.getGameStats(gameDataUrl)
-                    .then(gameData => {
-                      let game = gameData.data.data.game;
-
-                      let homeTeam;
-                      let awayTeam;
-                      let homeLeague;
-                      let awayLeague;
-
-                      for (var i = 0; i < inputArray.length; i++) {
-                        if (inputArray[i].name === gameHomeTeam) {
-                          homeTeam = inputArray[i];
-                        }
-                        if (inputArray[i].name === gameAwayTeam) {
-                          awayTeam = inputArray[i];
-                        }
-                      }
-
-                      if (homeTeam.league === 'AL') {
-                        homeLeague = inputArray[1];
-                      } else {
-                        homeLeague = inputArray[2];
-                      }
-
-                      if (awayTeam.league === 'AL') {
-                        awayLeague = inputArray[1];
-                      } else {
-                        awayLeague = inputArray[2];
-                      }
-
-                      game.inning.forEach(inning => {
-                        let actionBot = inning.bottom.action;
-                        let actionTop = inning.top.action;
-
-                        if (actionBot) {
-                          if (!actionBot.length) {
-                            translateAction(inputArray[0], awayTeam, awayLeague, actionBot);
-                          } else {
-                            actionBot.forEach(action => {
-                              translateAction(inputArray[0], awayTeam, awayLeague, action);
-                            });
-
-                          }
-                        }
-
-                        if (actionTop) {
-                          if (!actionTop.length) {
-                            translateAction(inputArray[0], homeTeam, homeLeague, actionTop);
-                          } else {
-                            actionTop.forEach(action => {
-                              translateAction(inputArray[0], homeTeam, homeLeague, action);
-                            });
-
-                          }
-                        }
-
-                      });
-
-                    });
-
-                });
-              }
-
-            });
-
+    function getTodaysGames(month, day) {
+      return MainService.getGamesForDay(month, day)
+        .then(results => {
+          if (results.data.data.games.game) {
+            return results.data.data.games.game;
           }
+        });
 
-        resolve(inputArray);
+    }
+
+    function getMatchUpDetails(game) {
+      return new Promise ((resolve, reject) => {
+        console.log(game.game_type);
+        if (game.game_type === 'R' || game.status === 'Final') {
+
+          let dataUrl = game.game_data_directory;
+
+          let homeTeam = game.home_team_name;
+
+          let awayTeam = game.away_team_name;
+
+          resolve({dataUrl, homeTeam, awayTeam});
+        } else {
+          reject(err).catch(err => console.log(err));
+        }
       });
 
     }
 
+
+
+    // function calcSeasonTotals(inputArray) {
+    //   return new Promise((resolve, reject) => {
+    //
+    //     let gameCounter = 0;
+    //
+    //     for (var i = moment("20160403", "YYYYMMDD"); i < moment("20161003", "YYYYMMDD"); i.add(1, 'days')) {
+    //
+    //       let date = i.format().split('-');
+    //       let dayTime = date[2].split('T');
+    //
+    //       let month = date[1];
+    //
+    //       let day = dayTime[0];
+    //
+    //       MainService.getGamesForDay(month, day)
+    //         .then(results => {
+    //           let gamesArray = results.data.data.games.game;
+    //
+    //           if (gamesArray) {
+    //
+    //             gamesArray.forEach((game, index) => {
+    //
+    //               if (game.game_type !== 'R' || game.status !== 'Final') {
+    //                 gamesArray.splice(index, 1);
+    //               }
+    //
+    //               let gameDataUrl = gamesArray[index].game_data_directory;
+    //
+    //               let gameHomeTeam = gamesArray[index].home_team_name;
+    //
+    //               let gameAwayTeam = gamesArray[index].away_team_name;
+    //
+    //               MainService.getGameStats(gameDataUrl)
+    //                 .then(gameData => {
+    //                   let game = gameData.data.data.game;
+    //
+    //                   let homeTeam;
+    //                   let awayTeam;
+    //                   let homeLeague;
+    //                   let awayLeague;
+    //
+    //                   for (var i = 0; i < inputArray.length; i++) {
+    //                     if (inputArray[i].name === gameHomeTeam) {
+    //                       homeTeam = inputArray[i];
+    //                     }
+    //                     if (inputArray[i].name === gameAwayTeam) {
+    //                       awayTeam = inputArray[i];
+    //                     }
+    //                   }
+    //
+    //                   if (homeTeam.league === 'AL') {
+    //                     homeLeague = inputArray[1];
+    //                   } else {
+    //                     homeLeague = inputArray[2];
+    //                   }
+    //
+    //                   if (awayTeam.league === 'AL') {
+    //                     awayLeague = inputArray[1];
+    //                   } else {
+    //                     awayLeague = inputArray[2];
+    //                   }
+    //
+    //                   game.inning.forEach(inning => {
+    //                     let actionBot = inning.bottom.action;
+    //                     let actionTop = inning.top.action;
+    //
+    //                     if (actionBot) {
+    //                       if (!actionBot.length) {
+    //                         translateAction(inputArray[0], awayTeam, awayLeague, actionBot);
+    //                       } else {
+    //                         actionBot.forEach(action => {
+    //                           translateAction(inputArray[0], awayTeam, awayLeague, action);
+    //                         });
+    //
+    //                       }
+    //                     }
+    //
+    //                     if (actionTop) {
+    //                       if (!actionTop.length) {
+    //                         translateAction(inputArray[0], homeTeam, homeLeague, actionTop);
+    //                       } else {
+    //                         actionTop.forEach(action => {
+    //                           translateAction(inputArray[0], homeTeam, homeLeague, action);
+    //                         });
+    //
+    //                       }
+    //                     }
+    //
+    //                   });
+    //
+    //                 });
+    //
+    //             });
+    //           }
+    //
+    //         });
+    //
+    //       }
+    //
+    //     resolve(inputArray);
+    //   });
+    //
+    // }
+
     function calcAverages(inputArray) {
+      return new Promise((resolve, reject) => {
+        inputArray.forEach(team => {
+          if (team.name === 'Major League Baseball') {
+            team.visitsPerGame = parseInt(team.totalAllVisits) / 4860;
+            team.changesPerGame = parseInt(team.totalChangesOnly) / 4860;
+            team.pureVisitsPerGame = parseInt(team.totalPureVisits) / 4860;
+          } else if (team.name === 'National League' || team.name === 'American League') {
+            team.visitsPerGame = parseInt(team.totalAllVisits) / 2430;
+            team.changesPerGame = parseInt(team.totalChangesOnly) / 2430;
+            team.pureVisitsPerGame = parseInt(team.totalPureVisits) / 2430;
 
-      inputArray.forEach(team => {
-        if (team.name === 'Major League Baseball') {
-          team.visitsPerGame = parseInt(team.totalAllVisits) / 4860;
-          team.changesPerGame = parseInt(team.totalChangesOnly) / 4860;
-          team.pureVisitsPerGame = parseInt(team.totalPureVisits) / 4860;
-        } else if (team.name === 'National League' || team.name === 'American League') {
-          team.visitsPerGame = parseInt(team.totalAllVisits) / 2430;
-          team.changesPerGame = parseInt(team.totalChangesOnly) / 2430;
-          team.pureVisitsPerGame = parseInt(team.totalPureVisits) / 2430;
+          } else {
+            team.visitsPerGame = parseInt(team.totalAllVisits) / 162;
+            team.changesPerGame = parseInt(team.totalChangesOnly) / 162;
+            team.pureVisitsPerGame = parseInt(team.totalPureVisits) / 162;
 
-        } else {
-          team.visitsPerGame = parseInt(team.totalAllVisits) / 162;
-          team.changesPerGame = parseInt(team.totalChangesOnly) / 162;
-          team.pureVisitsPerGame = parseInt(team.totalPureVisits) / 162;
-
-        }
+          }
+        });
+        resolve(inputArray);
       });
-
-      return inputArray;
 
     }
 
